@@ -74,7 +74,7 @@ export async function fetchGdeltDocs(params: {
 
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=ArtList&format=json&sort=HybridRel&maxrecords=${max}&startdatetime=${startDt}&enddatetime=${endDt}`;
 
-  const raw = await fetchJson(url, 8000);
+  const raw = await fetchJson(url, 15000);
   const parsed = raw as GdeltResponse;
   const out: GdeltFetchedItem[] = [];
 

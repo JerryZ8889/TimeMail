@@ -12,7 +12,7 @@ import type { NewNewsItem } from "../../../../lib/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 20;
+export const maxDuration = 60;
 
 type Body = {
   secret?: string;

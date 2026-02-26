@@ -4,7 +4,7 @@ import { translateItemsToZh } from "../../../server/translate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 60;
 
 type Body = { secret?: string };
 
