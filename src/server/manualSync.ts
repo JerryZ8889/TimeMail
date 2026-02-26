@@ -43,7 +43,7 @@ export async function runManualSync(params: { lookbackHours?: number } = {}): Pr
   const supabase = createSupabaseAdmin();
   const now = DateTime.now();
   const windowEnd = toIso(now);
-  const lookback = Number.isFinite(params.lookbackHours) ? Math.max(1, Math.min(72, params.lookbackHours ?? 24)) : 24;
+  const lookback = Number.isFinite(params.lookbackHours) ? Math.max(1, Math.min(240, params.lookbackHours ?? 168)) : 168;
   const windowStart = toIso(now.minus({ hours: lookback }));
 
   try {
@@ -145,4 +145,3 @@ export async function runManualSync(params: { lookbackHours?: number } = {}): Pr
     return { status: "FAILED", windowStart, windowEnd, fetchedCount: 0, dedupedCount: 0, outputCount: 0, errorMessage: msg };
   }
 }
-

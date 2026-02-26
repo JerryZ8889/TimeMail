@@ -20,7 +20,6 @@ export async function POST(req: Request) {
   if (!verify(req, body)) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const result = await runManualSync({ lookbackHours: 24 });
+  const result = await runManualSync({ lookbackHours: 168 });
   return Response.json({ ok: true, result });
 }
-

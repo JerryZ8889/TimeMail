@@ -51,7 +51,7 @@ export function SyncPanel() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-semibold">同步</div>
-          <div className="mt-1 text-xs text-zinc-500">手动从全网抓取最近 24 小时增量并写入数据库</div>
+          <div className="mt-1 text-xs text-zinc-500">手动从全网抓取最近 7 天增量并写入数据库（会与库内去重）</div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
@@ -82,4 +82,3 @@ export function SyncPanel() {
     </div>
   );
 }
-
