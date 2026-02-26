@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 300;
 
 type SourceResult = {
   index: number;

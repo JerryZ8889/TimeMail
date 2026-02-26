@@ -4,7 +4,7 @@ import { translateItemsToZh } from "../../../server/translate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type Body = { secret?: string };
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     .is("title_zh", null)
     .not("language", "in", '("zh","zh-cn","zh-hans")')
     .order("published_at", { ascending: false })
-    .limit(10);
+    .limit(1);
 
   if (queryErr) {
     return Response.json({ ok: false, error: queryErr.message }, { status: 500 });

@@ -42,18 +42,35 @@ type GdeltResponse = {
   articles?: GdeltArticle[];
 };
 
-async function fetchJson(url: string, timeoutMs: number): Promise<unknown> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchJsonOnce(url: string, timeoutMs: number): Promise<{ ok: true; data: unknown } | { ok: false; status: number }> {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const res = await fetch(url, { signal: ac.signal, headers: { "user-agent": "daily-news-bot" } });
-    if (!res.ok) {
-      throw new Error(`GDELT HTTP ${res.status}`);
-    }
-    return await res.json();
+    if (res.status === 429) return { ok: false, status: 429 };
+    if (!res.ok) throw new Error(`GDELT HTTP ${res.status}`);
+    return { ok: true, data: await res.json() };
   } finally {
     clearTimeout(t);
   }
+}
+
+async function fetchJson(url: string, timeoutMs: number): Promise<unknown> {
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const result = await fetchJsonOnce(url, timeoutMs);
+    if (result.ok) return result.data;
+    if (result.status === 429 && attempt < maxRetries - 1) {
+      await sleep(3000 * (attempt + 1));
+      continue;
+    }
+    throw new Error(`GDELT HTTP ${result.status}`);
+  }
+  throw new Error("GDELT fetch failed");
 }
 
 export async function fetchGdeltDocs(params: {
