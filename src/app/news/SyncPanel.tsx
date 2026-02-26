@@ -9,6 +9,7 @@ type SourceStatus = "pending" | "fetching" | "success" | "failed";
 type SourceState = {
   status: SourceStatus;
   count: number;
+  fetchedCount: number;
   error?: string;
 };
 
@@ -28,6 +29,7 @@ export function SyncPanel() {
     return Array.from({ length: SOURCE_COUNT }, (): SourceState => ({
       status: "pending",
       count: 0,
+      fetchedCount: 0,
     }));
   }
 
@@ -80,6 +82,7 @@ export function SyncPanel() {
         const json = (await res.json().catch(() => null)) as {
           ok?: boolean;
           count?: number;
+          fetchedCount?: number;
           errorMessage?: string;
         } | null;
 
@@ -91,7 +94,8 @@ export function SyncPanel() {
 
         if (json?.ok) {
           const count = json.count ?? 0;
-          updateSource(i, { status: "success", count });
+          const fetchedCount = json.fetchedCount ?? count;
+          updateSource(i, { status: "success", count, fetchedCount });
           sourceResults.push({ index: i, ok: true, count });
         } else {
           const err = json?.errorMessage ?? `HTTP ${res.status}`;
@@ -228,7 +232,7 @@ export function SyncPanel() {
               <div className="text-xs font-semibold text-zinc-500 mb-1">{g.displayName}</div>
               <div className="space-y-1">
                 {g.sources.map((source) => {
-                  const st = sourceStates[source.index] ?? { status: "pending", count: 0 };
+                  const st = sourceStates[source.index] ?? { status: "pending", count: 0, fetchedCount: 0 };
                   return (
                     <div key={source.index} className="flex items-start gap-2 text-xs">
                       <span className={`mt-0.5 font-mono ${statusColor(st.status)}`}>
@@ -248,7 +252,7 @@ export function SyncPanel() {
                       <span className={`whitespace-nowrap ${statusColor(st.status)}`}>
                         {st.status === "pending" ? "等待" : null}
                         {st.status === "fetching" ? "抓取中..." : null}
-                        {st.status === "success" ? `${st.count} 条` : null}
+                        {st.status === "success" ? (st.count === st.fetchedCount ? `${st.count} 条` : `新增 ${st.count} / 抓取 ${st.fetchedCount}`) : null}
                         {st.status === "failed" ? (st.error ? `失败: ${st.error.slice(0, 30)}` : "失败") : null}
                       </span>
                     </div>

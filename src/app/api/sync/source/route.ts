@@ -93,18 +93,26 @@ export async function POST(req: Request) {
       summary_zh: null,
     }));
 
-    let upsertCount = 0;
+    let newCount = 0;
     if (rows.length) {
       const supabase = createSupabaseAdmin();
+      const hashes = rows.map((r) => r.content_hash);
+      const { data: existing } = await supabase
+        .from("news_item")
+        .select("content_hash")
+        .in("content_hash", hashes);
+      const existingSet = new Set((existing ?? []).map((e) => e.content_hash));
+      newCount = rows.filter((r) => !existingSet.has(r.content_hash)).length;
+
       const { error: upsertErr } = await supabase.from("news_item").upsert(rows, { onConflict: "content_hash" });
       if (upsertErr) throw upsertErr;
-      upsertCount = rows.length;
     }
 
     return Response.json({
       ok: true,
       sourceName: source.label,
-      count: upsertCount,
+      count: newCount,
+      fetchedCount: rows.length,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "抓取失败";
