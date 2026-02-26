@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AiDigestItem = { title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] };
 type AiDigest = {
@@ -11,57 +11,132 @@ type AiDigest = {
   watch: AiDigestItem[];
 };
 
+type JobStatus = "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
+type Job = {
+  id: string;
+  status: JobStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  attempt?: number;
+  nextRunAt?: string | null;
+  errorMessage?: string | null;
+  digest?: AiDigest | null;
+};
+
 export function AiDigestPanel(props: {
   topic: "CATL" | "XIAOMI";
   days: "1" | "7" | "30" | "ALL";
   q: string;
-  page: number;
-  pageSize: number;
 }) {
   const [loading, setLoading] = useState(false);
   const [digest, setDigest] = useState<AiDigest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
 
-  const queryString = useMemo(() => {
-    const sp = new URLSearchParams();
-    sp.set("topic", props.topic);
-    sp.set("days", props.days);
-    sp.set("q", props.q);
-    sp.set("page", String(props.page));
-    sp.set("pageSize", String(props.pageSize));
-    return sp.toString();
-  }, [props.days, props.page, props.pageSize, props.q, props.topic]);
+  const pollTimer = useRef<number | null>(null);
+
+  function clearPoll() {
+    if (pollTimer.current !== null) {
+      window.clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }
+
+  useEffect(() => {
+    return () => clearPoll();
+  }, []);
+
+  async function pollJob(id: string) {
+    try {
+      const res = await fetch(`/api/ai/digest/jobs/${encodeURIComponent(id)}`, { method: "GET" });
+      const json = (await res.json()) as { ok?: boolean; job?: Job; message?: string };
+      if (!res.ok || !json?.ok || !json?.job) return;
+      setJob(json.job);
+      if (json.job.status === "SUCCESS" && json.job.digest) {
+        setDigest(json.job.digest);
+        setError(null);
+        setLoading(false);
+        clearPoll();
+      } else if (json.job.status === "FAILED") {
+        setDigest(null);
+        setError(json.job.errorMessage || "AI 解读失败");
+        setLoading(false);
+        clearPoll();
+      }
+    } catch {
+      return;
+    }
+  }
 
   async function generate() {
     if (loading) return;
     setLoading(true);
     setError(null);
+    setDigest(null);
+    setJob(null);
     try {
-      const res = await fetch(`/api/ai/digest?${queryString}`, { method: "GET" });
-      const json = (await res.json()) as { ok?: boolean; digest?: AiDigest; message?: string };
-      if (!res.ok || !json?.ok || !json?.digest) {
+      const res = await fetch(`/api/ai/digest/jobs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ topic: props.topic, days: props.days, q: props.q }),
+      });
+      const json = (await res.json()) as { ok?: boolean; job?: Job; message?: string };
+      const j = json?.job;
+      if (!res.ok || !json?.ok || !j) {
         throw new Error(json?.message || `请求失败（HTTP ${res.status}）`);
       }
-      setDigest(json.digest);
+      setJob(j);
+      if (j.status === "SUCCESS" && j.digest) {
+        setDigest(j.digest);
+        setLoading(false);
+        return;
+      }
+      await pollJob(j.id);
+      clearPoll();
+      pollTimer.current = window.setInterval(() => void pollJob(j.id), 2000);
     } catch (e) {
       setDigest(null);
+      setJob(null);
       setError(e instanceof Error ? e.message : "AI 解读失败");
     } finally {
-      setLoading(false);
+      if (!pollTimer.current) setLoading(false);
     }
   }
 
   function reset() {
     setDigest(null);
     setError(null);
+    setJob(null);
+    setLoading(false);
+    clearPoll();
   }
+
+  const statusText = useMemo(() => {
+    if (!job) return null;
+    if (job.status === "QUEUED") {
+      if (job.nextRunAt) {
+        const t = new Date(job.nextRunAt).getTime();
+        const left = Math.max(0, Math.round((t - Date.now()) / 1000));
+        return `排队中（预计 ${left}s 后重试）`;
+      }
+      return "排队中…";
+    }
+    if (job.status === "RUNNING") return "生成中…";
+    if (job.status === "SUCCESS") return "已生成";
+    if (job.status === "FAILED") return "生成失败";
+    return null;
+  }, [job]);
 
   return (
     <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-semibold">AI 解读</div>
-          <div className="mt-1 text-xs text-zinc-500">点击生成后才会调用模型，429 表示被限流</div>
+          <div className="mt-1 text-xs text-zinc-500">
+            点击生成后才会调用模型；若被限流会自动延迟重试（候选集最多 200 条，先筛 Top 30 再解读）
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -85,6 +160,7 @@ export function AiDigestPanel(props: {
       </div>
 
       {error ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+      {statusText ? <div className="mt-3 text-xs text-zinc-500">{statusText}</div> : null}
 
       {!digest ? (
         <div className="mt-4 text-sm text-zinc-600">暂未生成。</div>

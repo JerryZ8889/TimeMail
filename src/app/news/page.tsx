@@ -244,7 +244,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
             </div>
           </form>
         </div>
-        <AiDigestPanel key={`${f.topic}|${f.days}|${f.q}|${f.page}|${f.pageSize}`} topic={f.topic} days={f.days} q={f.q} page={f.page} pageSize={f.pageSize} />
+        <AiDigestPanel key={`${f.topic}|${f.days}|${f.q}`} topic={f.topic} days={f.days} q={f.q} />
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
