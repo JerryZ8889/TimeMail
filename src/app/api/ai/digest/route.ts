@@ -23,8 +23,8 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const topicRaw = (url.searchParams.get("topic") ?? "ALL").toUpperCase();
-  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "ALL") as "ALL" | "CATL" | "XIAOMI";
+  const topicRaw = (url.searchParams.get("topic") ?? "CATL").toUpperCase();
+  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "CATL") as "CATL" | "XIAOMI";
   const daysRaw = (url.searchParams.get("days") ?? "ALL").toUpperCase();
   const days = (daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "ALL") as "1" | "7" | "30" | "ALL";
   const q = sanitizeQuery(url.searchParams.get("q") ?? "");
@@ -34,9 +34,7 @@ export async function GET(req: Request) {
   const supabase = createSupabaseAdmin();
   let query = supabase.from("news_item").select("*").order("published_at", { ascending: false });
 
-  if (topic !== "ALL") {
-    query = query.eq("topic", topic);
-  }
+  query = query.eq("topic", topic);
 
   if (days !== "ALL") {
     const n = Number.parseInt(days, 10);
@@ -79,4 +77,3 @@ export async function GET(req: Request) {
     return Response.json({ ok: false, message: msg }, { status: 500 });
   }
 }
-

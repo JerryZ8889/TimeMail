@@ -12,7 +12,7 @@ type AiDigest = {
 };
 
 export function AiDigestPanel(props: {
-  topic: "ALL" | "CATL" | "XIAOMI";
+  topic: "CATL" | "XIAOMI";
   days: "1" | "7" | "30" | "ALL";
   q: string;
   page: number;
@@ -184,4 +184,3 @@ export function AiDigestPanel(props: {
     </div>
   );
 }
-

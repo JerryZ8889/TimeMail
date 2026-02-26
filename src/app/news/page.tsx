@@ -17,7 +17,7 @@ function fmt(iso: string | null | undefined): string {
 function topicName(topic: string): string {
   if (topic === "CATL") return "宁德时代";
   if (topic === "XIAOMI") return "小米";
-  return "全部";
+  return "宁德时代";
 }
 
 function pickFirst(v: string | string[] | undefined): string {
@@ -52,7 +52,7 @@ async function loadNews(params: SearchParams): Promise<{
   items: NewsItemRow[];
   count: number | null;
   filters: {
-    topic: "ALL" | "CATL" | "XIAOMI";
+    topic: "CATL" | "XIAOMI";
     q: string;
     days: "1" | "7" | "30" | "ALL";
     page: number;
@@ -61,7 +61,7 @@ async function loadNews(params: SearchParams): Promise<{
 }> {
   const envReady = Boolean(getOptionalEnv("SUPABASE_URL") && getOptionalEnv("SUPABASE_SERVICE_ROLE_KEY"));
   const topicRaw = pickFirst(params.topic).toUpperCase();
-  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "ALL") as "ALL" | "CATL" | "XIAOMI";
+  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "CATL") as "CATL" | "XIAOMI";
   const q = sanitizeQuery(pickFirst(params.q));
   const daysRaw = pickFirst(params.days).toUpperCase();
   const days = (daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "ALL") as "1" | "7" | "30" | "ALL";
@@ -80,10 +80,7 @@ async function loadNews(params: SearchParams): Promise<{
   const supabase = createSupabaseAdmin();
 
   let query = supabase.from("news_item").select("*", { count: "estimated" }).order("published_at", { ascending: false });
-
-  if (topic !== "ALL") {
-    query = query.eq("topic", topic);
-  }
+  query = query.eq("topic", topic);
 
   if (days !== "ALL") {
     const n = Number.parseInt(days, 10);
@@ -190,7 +187,6 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                 defaultValue={f.topic}
                 className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
               >
-                <option value="ALL">全部</option>
                 <option value="CATL">宁德时代</option>
                 <option value="XIAOMI">小米</option>
               </select>
@@ -240,7 +236,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                 应用筛选
               </button>
               <Link
-                href="/news"
+                href="/news?topic=CATL"
                 className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
                 重置

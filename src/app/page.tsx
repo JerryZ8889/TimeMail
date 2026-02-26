@@ -107,10 +107,10 @@ export default async function Home() {
             <div className="hidden sm:block">计划：每天 08:00（Asia/Shanghai）</div>
             <div className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">邮箱：{maskEmail(data.toEmail)}</div>
             <Link
-              href="/news"
+              href="/news?topic=CATL"
               className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
             >
-              全部资讯
+              资讯列表
             </Link>
           </div>
         </div>
