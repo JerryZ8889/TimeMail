@@ -165,6 +165,8 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
           </div>
         ) : null}
 
+        <SyncPanel />
+
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -246,7 +248,6 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
           </form>
         </div>
         <AiDigestPanel key={`${f.topic}|${f.days}|${f.q}`} topic={f.topic} days={f.days} q={f.q} />
-        <SyncPanel />
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
