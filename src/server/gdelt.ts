@@ -46,14 +46,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchJsonOnce(url: string, timeoutMs: number): Promise<{ ok: true; data: unknown } | { ok: false; status: number }> {
+async function fetchJsonOnce(url: string, timeoutMs: number): Promise<{ ok: true; data: unknown } | { ok: false; status: number; error?: string }> {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const res = await fetch(url, { signal: ac.signal, headers: { "user-agent": "daily-news-bot" } });
     if (res.status === 429) return { ok: false, status: 429 };
-    if (!res.ok) throw new Error(`GDELT HTTP ${res.status}`);
+    if (!res.ok) return { ok: false, status: res.status };
     return { ok: true, data: await res.json() };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "fetch failed";
+    return { ok: false, status: 0, error: msg };
   } finally {
     clearTimeout(t);
   }
@@ -61,16 +64,17 @@ async function fetchJsonOnce(url: string, timeoutMs: number): Promise<{ ok: true
 
 async function fetchJson(url: string, timeoutMs: number): Promise<unknown> {
   const maxRetries = 3;
+  let lastError = "";
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const result = await fetchJsonOnce(url, timeoutMs);
     if (result.ok) return result.data;
-    if (result.status === 429 && attempt < maxRetries - 1) {
+    lastError = result.error ?? `HTTP ${result.status}`;
+    if (attempt < maxRetries - 1) {
       await sleep(3000 * (attempt + 1));
       continue;
     }
-    throw new Error(`GDELT HTTP ${result.status}`);
   }
-  throw new Error("GDELT fetch failed");
+  throw new Error(`GDELT ${lastError}（已重试 ${maxRetries} 次）`);
 }
 
 export async function fetchGdeltDocs(params: {
