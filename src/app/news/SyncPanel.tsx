@@ -24,14 +24,30 @@ export function SyncPanel() {
     setMsg(null);
     setResult(null);
     try {
+      if (!secret) {
+        setMsg("同步失败（没有输入口令）");
+        setLoading(false);
+        return;
+      }
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ secret }),
       });
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; result?: SyncResult } | null;
-      if (!res.ok || !json?.ok || !json.result) {
-        throw new Error(`同步失败（HTTP ${res.status}）`);
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; result?: SyncResult } | null;
+      if (!res.ok) {
+        if (res.status === 401) {
+          setMsg("同步失败（口令错误）");
+        } else {
+          setMsg(json?.error || `同步失败（HTTP ${res.status}）`);
+        }
+        setLoading(false);
+        return;
+      }
+      if (!json?.ok || !json.result) {
+        setMsg(json?.error || "同步失败");
+        setLoading(false);
+        return;
       }
       setResult(json.result);
       if (json.result.status === "SUCCESS") {
