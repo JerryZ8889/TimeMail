@@ -184,12 +184,6 @@ export default async function Home() {
               <div className="text-sm font-semibold">本次窗口新增消息</div>
               <div className="mt-0.5 text-xs text-zinc-500">默认展示最多 50 条</div>
             </div>
-            <Link
-              href="/api/health"
-              className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100"
-            >
-              健康检查
-            </Link>
           </div>
 
           {data.latestItems.length === 0 ? (

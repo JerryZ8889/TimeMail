@@ -109,7 +109,8 @@ export async function runDailyCron(): Promise<{
   const runId = runRow.id;
 
   const dryRun = getOptionalEnv("DRY_RUN") === "1";
-  const skipEmail = getOptionalEnv("SKIP_EMAIL") === "1";
+  const skipEmail =
+    getOptionalEnv("SKIP_EMAIL") === "1" || !getOptionalEnv("RESEND_API_KEY") || !getOptionalEnv("RESEND_FROM");
 
   try {
     const sourceResults = await Promise.allSettled([
@@ -225,8 +226,13 @@ export async function runDailyCron(): Promise<{
       outputCount,
     });
 
+    let emailError: string | null = null;
     if (!dryRun && !skipEmail) {
-      await sendReportEmail({ subject, html });
+      try {
+        await sendReportEmail({ subject, html });
+      } catch (e) {
+        emailError = e instanceof Error ? e.message : "Email send failed";
+      }
     }
 
     await supabase
@@ -240,7 +246,7 @@ export async function runDailyCron(): Promise<{
         deduped_count: dedupedCount,
         output_count: outputCount,
         email_to: toEmail,
-        error_message: null,
+        error_message: emailError,
       })
       .eq("id", runId);
 
