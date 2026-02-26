@@ -1,12 +1,23 @@
 import { getOptionalEnv } from "../../../lib/env";
 import { createSupabaseAdmin } from "../../../lib/supabaseAdmin";
-import { runManualSync } from "../../../server/manualSync";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 10;
 
-type Body = { secret?: string };
+type SourceResult = {
+  index: number;
+  ok: boolean;
+  count: number;
+  error?: string;
+};
+
+type Body = {
+  secret?: string;
+  windowStart?: string;
+  windowEnd?: string;
+  sourceResults?: SourceResult[];
+};
 
 function verify(req: Request, body: Body): boolean {
   const expected = getOptionalEnv("CRON_SECRET");
@@ -22,41 +33,56 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const windowStart = body.windowStart ?? null;
+  const windowEnd = body.windowEnd ?? null;
+  const sourceResults = Array.isArray(body.sourceResults) ? body.sourceResults : [];
+
+  const fetchedCount = sourceResults.reduce((s, r) => s + (r.count ?? 0), 0);
+  const successCount = sourceResults.filter((r) => r.ok).length;
+  const failedCount = sourceResults.filter((r) => !r.ok).length;
+  const hasAnySuccess = successCount > 0;
+  const status = hasAnySuccess ? "SUCCESS" : "FAILED";
+
+  const errors = sourceResults
+    .filter((r) => !r.ok && r.error)
+    .map((r) => `#${r.index}: ${r.error}`)
+    .join("; ");
+  const errorMessage = errors || null;
+
   const supabase = createSupabaseAdmin();
+  const now = new Date().toISOString();
 
-  const { data: runRow } = await supabase
-    .from("run_log")
-    .insert({
-      status: "RUNNING",
-      window_start: null,
-      window_end: null,
-      fetched_count: 0,
-      deduped_count: 0,
-      output_count: 0,
-      error_message: null,
-    })
-    .select("id")
-    .single();
+  await supabase.from("run_log").insert({
+    status,
+    started_at: now,
+    ended_at: now,
+    window_start: windowStart,
+    window_end: windowEnd,
+    fetched_count: fetchedCount,
+    deduped_count: 0,
+    output_count: fetchedCount,
+    error_message: errorMessage,
+  });
 
-  const runId = (runRow as { id?: string } | null)?.id ?? null;
-
-  const result = await runManualSync({ lookbackHours: 168 });
-
-  if (runId) {
+  if (hasAnySuccess && windowEnd) {
     await supabase
-      .from("run_log")
-      .update({
-        ended_at: new Date().toISOString(),
-        status: result.status,
-        window_start: result.windowStart,
-        window_end: result.windowEnd,
-        fetched_count: result.fetchedCount,
-        deduped_count: result.dedupedCount,
-        output_count: result.outputCount,
-        error_message: result.errorMessage ?? null,
-      })
-      .eq("id", runId);
+      .from("job_state")
+      .upsert(
+        { key: "daily_news", last_success_at: windowEnd, updated_at: now },
+        { onConflict: "key" },
+      );
   }
 
-  return Response.json({ ok: true, result });
+  return Response.json({
+    ok: true,
+    result: {
+      status,
+      windowStart,
+      windowEnd,
+      fetchedCount,
+      successCount,
+      failedCount,
+      errorMessage,
+    },
+  });
 }

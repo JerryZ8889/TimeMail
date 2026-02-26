@@ -1,5 +1,7 @@
 import { getOptionalEnv } from "../lib/env";
 import type { NewsItemRow } from "../lib/types";
+import type { TopicKey } from "../config/topics";
+import { isValidTopic, TOPIC_KEYS, allTopicDisplayNames } from "../config/topics";
 
 type OpenAIChatResponse = {
   choices?: Array<{
@@ -19,10 +21,10 @@ type ZhipuChatResponse = {
 
 export type AiDigest = {
   overall: string;
-  majorChanges: Array<{ title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] }>;
-  bullish: Array<{ title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] }>;
-  bearish: Array<{ title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] }>;
-  watch: Array<{ title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] }>;
+  majorChanges: Array<{ title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] }>;
+  bullish: Array<{ title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] }>;
+  bearish: Array<{ title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] }>;
+  watch: Array<{ title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] }>;
 };
 
 type Provider = "zhipu" | "openai";
@@ -58,12 +60,13 @@ function pickProvider(): Provider | null {
   return null;
 }
 
-function normalizeTopic(v: unknown): "CATL" | "XIAOMI" | "BOTH" {
-  if (v === "CATL" || v === "XIAOMI" || v === "BOTH") return v;
+function normalizeTopic(v: unknown): TopicKey | "BOTH" {
+  if (typeof v === "string" && isValidTopic(v)) return v;
+  if (v === "BOTH") return "BOTH";
   return "BOTH";
 }
 
-function normalizeItem(v: unknown): { title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] } | null {
+function normalizeItem(v: unknown): { title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] } | null {
   if (!v || typeof v !== "object") return null;
   const obj = v as Record<string, unknown>;
   const title = typeof obj.title === "string" ? obj.title.trim() : "";
@@ -114,7 +117,7 @@ function buildInput(items: Array<Pick<NewsItemRow, "topic" | "title" | "title_zh
 
 type PickInputItem = {
   i: number;
-  topic: "CATL" | "XIAOMI";
+  topic: TopicKey;
   title: string;
   source: string;
   published_at: string;
@@ -227,6 +230,12 @@ export async function pickTopNewsIndices(params: { candidates: AiDigestCandidate
   return out;
 }
 
+function digestSystemPrompt(): string {
+  const names = allTopicDisplayNames();
+  const keys = TOPIC_KEYS.join("/");
+  return `你是新闻解读助手。根据输入新闻，输出简体中文摘要，帮助判断对"${names}"的潜在影响。只根据新闻内容推断，不要编造。输出必须是严格 JSON 对象：{overall:string, majorChanges:[{title,topic,reason,urls}], bullish:[...], bearish:[...], watch:[...]}. topic 只能是 ${keys}/BOTH。每个 reason 一句话，最多 40 字。每项 urls 最多 3 个。`;
+}
+
 async function callOpenAiDigest(payload: { items: ReturnType<typeof buildInput> }): Promise<AiDigest> {
   const apiKey = getOptionalEnv("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OpenAI API key missing");
@@ -236,15 +245,8 @@ async function callOpenAiDigest(payload: { items: ReturnType<typeof buildInput> 
     model,
     temperature: 0.2,
     messages: [
-      {
-        role: "system",
-        content:
-          "你是新闻解读助手。根据输入新闻，输出简体中文摘要，帮助判断对“宁德时代/小米”的潜在影响。只根据新闻内容推断，不要编造。输出必须是严格 JSON 对象：{overall:string, majorChanges:[{title,topic,reason,urls}], bullish:[...], bearish:[...], watch:[...]}. topic 只能是 CATL/XIAOMI/BOTH。每个 reason 一句话，最多 40 字。每项 urls 最多 3 个。",
-      },
-      {
-        role: "user",
-        content: JSON.stringify(payload),
-      },
+      { role: "system", content: digestSystemPrompt() },
+      { role: "user", content: JSON.stringify(payload) },
     ],
   };
 
@@ -276,15 +278,8 @@ async function callZhipuDigest(payload: { items: ReturnType<typeof buildInput> }
     temperature: 0.2,
     stream: false,
     messages: [
-      {
-        role: "system",
-        content:
-          "你是新闻解读助手。根据输入新闻，输出简体中文摘要，帮助判断对“宁德时代/小米”的潜在影响。只根据新闻内容推断，不要编造。输出必须是严格 JSON 对象：{overall:string, majorChanges:[{title,topic,reason,urls}], bullish:[...], bearish:[...], watch:[...]}. topic 只能是 CATL/XIAOMI/BOTH。每个 reason 一句话，最多 40 字。每项 urls 最多 3 个。",
-      },
-      {
-        role: "user",
-        content: JSON.stringify(payload),
-      },
+      { role: "system", content: digestSystemPrompt() },
+      { role: "user", content: JSON.stringify(payload) },
     ],
   };
 
@@ -310,7 +305,7 @@ const cache = new Map<string, { at: number; value: AiDigest }>();
 
 export async function buildAiDigest(params: {
   items: Array<Pick<NewsItemRow, "topic" | "title" | "title_zh" | "summary" | "summary_zh" | "source" | "published_at" | "url">>;
-  topic: "CATL" | "XIAOMI";
+  topic: TopicKey;
   q: string;
   days: string;
 }): Promise<AiDigest | null> {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { TopicKey } from "../../config/topics";
 
-type AiDigestItem = { title: string; topic: "CATL" | "XIAOMI" | "BOTH"; reason: string; urls: string[] };
+type AiDigestItem = { title: string; topic: TopicKey | "BOTH"; reason: string; urls: string[] };
 type AiDigest = {
   overall: string;
   majorChanges: AiDigestItem[];
@@ -27,7 +28,7 @@ type Job = {
 };
 
 export function AiDigestPanel(props: {
-  topic: "CATL" | "XIAOMI";
+  topic: TopicKey;
   days: "1" | "7" | "30" | "ALL";
   q: string;
 }) {

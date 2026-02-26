@@ -5,6 +5,7 @@ import { createSupabaseAdmin } from "../../lib/supabaseAdmin";
 import type { NewsItemRow } from "../../lib/types";
 import { AiDigestPanel } from "./AiDigestPanel";
 import { SyncPanel } from "./SyncPanel";
+import { TOPIC_KEYS, DEFAULT_TOPIC, topicDisplayName, isValidTopic, allTopicDisplayNames } from "../../config/topics";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -13,12 +14,6 @@ function fmt(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString("zh-CN", { hour12: false });
-}
-
-function topicName(topic: string): string {
-  if (topic === "CATL") return "宁德时代";
-  if (topic === "XIAOMI") return "小米";
-  return "宁德时代";
 }
 
 function pickFirst(v: string | string[] | undefined): string {
@@ -62,7 +57,7 @@ async function loadNews(params: SearchParams): Promise<{
 }> {
   const envReady = Boolean(getOptionalEnv("SUPABASE_URL") && getOptionalEnv("SUPABASE_SERVICE_ROLE_KEY"));
   const topicRaw = pickFirst(params.topic).toUpperCase();
-  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "CATL") as "CATL" | "XIAOMI";
+  const topic = isValidTopic(topicRaw) ? topicRaw : DEFAULT_TOPIC;
   const q = sanitizeQuery(pickFirst(params.q));
   const daysRaw = pickFirst(params.days).toUpperCase();
   const days = (daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "ALL") as "1" | "7" | "30" | "ALL";
@@ -138,7 +133,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
             </div>
             <div>
               <div className="text-sm font-semibold leading-5">资讯日报机器人</div>
-              <div className="text-xs text-zinc-500">宁德时代 / 小米</div>
+              <div className="text-xs text-zinc-500">{allTopicDisplayNames()}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-600">
@@ -184,8 +179,9 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                 defaultValue={f.topic}
                 className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
               >
-                <option value="CATL">宁德时代</option>
-                <option value="XIAOMI">小米</option>
+                {TOPIC_KEYS.map((k) => (
+                  <option key={k} value={k}>{topicDisplayName(k)}</option>
+                ))}
               </select>
             </div>
             <div className="md:col-span-2">
@@ -233,7 +229,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                 应用筛选
               </button>
               <Link
-                href="/news?topic=CATL"
+                href={`/news?topic=${DEFAULT_TOPIC}`}
                 className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
                 重置
@@ -245,7 +241,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
-            <div className="text-xs text-zinc-500">当前：{topicName(f.topic)}</div>
+            <div className="text-xs text-zinc-500">当前：{topicDisplayName(f.topic)}</div>
             <div className="flex items-center gap-2">
               <Link
                 href={prevHref ?? "#"}
@@ -279,7 +275,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                   <li key={it.id} className="px-4 py-4 hover:bg-zinc-50">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <div className="text-xs text-zinc-500">{topicName(it.topic)}</div>
+                        <div className="text-xs text-zinc-500">{topicDisplayName(it.topic)}</div>
                         <div className="mt-1 line-clamp-2 text-sm font-semibold text-zinc-900">{title}</div>
                         {showOriginal ? <div className="mt-1 line-clamp-1 text-xs text-zinc-400">{it.title}</div> : null}
                         <div className="mt-2 text-xs text-zinc-600">

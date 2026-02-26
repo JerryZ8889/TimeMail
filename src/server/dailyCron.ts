@@ -1,44 +1,16 @@
 import { DateTime } from "luxon";
-import { getOptionalEnv } from "../lib/env";
 import { createSupabaseAdmin } from "../lib/supabaseAdmin";
-import type { NewNewsItem, Topic } from "../lib/types";
+import type { NewNewsItem } from "../lib/types";
 import { computeWindowEndShanghai, toIso } from "../lib/time";
 import { fetchGoogleNewsRss } from "./googleNewsRss";
 import { fetchGdeltDocs } from "./gdelt";
 import { translateItemsToZh } from "./translate";
+import { TOPIC_KEYS, getTopicQueries, getGdeltQuery } from "../config/topics";
 
 function parseIsoOrNull(v: string | null | undefined): DateTime | null {
   if (!v) return null;
   const dt = DateTime.fromISO(v, { zone: "utc" });
   return dt.isValid ? dt : null;
-}
-
-function topicQueries(topic: Topic): string[] {
-  if (topic === "CATL") return [
-    "宁德时代 OR CATL OR Contemporary Amperex",
-    "CATL battery OR CATL energy storage",
-    "宁德时代 动力电池 OR 储能",
-  ];
-  return [
-    "小米 OR 小米集团 OR Xiaomi",
-    "小米 汽车 OR SU7 OR Xiaomi EV",
-    "Xiaomi smartphone OR Xiaomi Auto",
-  ];
-}
-
-function gdeltQuery(topic: Topic): string {
-  if (topic === "CATL") return '(CATL OR "Contemporary Amperex" OR 宁德时代)';
-  return '(Xiaomi OR 小米 OR "Xiaomi Auto" OR SU7)';
-}
-
-function groupByTopic<T extends { topic: Topic }>(items: T[]): Record<Topic, T[]> {
-  return items.reduce(
-    (acc, it) => {
-      acc[it.topic].push(it);
-      return acc;
-    },
-    { CATL: [], XIAOMI: [] } as Record<Topic, T[]>,
-  );
 }
 
 export async function runDailyCron(): Promise<{
@@ -106,31 +78,22 @@ export async function runDailyCron(): Promise<{
   const runId = runRow.id;
 
   try {
-    const sourceResults = await Promise.allSettled([
-      fetchGoogleNewsRss("CATL", topicQueries("CATL")),
-      fetchGoogleNewsRss("XIAOMI", topicQueries("XIAOMI")),
+    const rssPromises = TOPIC_KEYS.map((t) => fetchGoogleNewsRss(t, getTopicQueries(t)));
+    const gdeltPromises = TOPIC_KEYS.map((t) =>
       fetchGdeltDocs({
-        topic: "CATL",
-        query: gdeltQuery("CATL"),
+        topic: t,
+        query: getGdeltQuery(t),
         windowStartIso: windowStart,
         windowEndIso: windowEnd,
         maxRecords: 80,
       }),
-      fetchGdeltDocs({
-        topic: "XIAOMI",
-        query: gdeltQuery("XIAOMI"),
-        windowStartIso: windowStart,
-        windowEndIso: windowEnd,
-        maxRecords: 80,
-      }),
-    ]);
+    );
+    const sourceResults = await Promise.allSettled([...rssPromises, ...gdeltPromises]);
 
-    const catlGoogle = sourceResults[0].status === "fulfilled" ? sourceResults[0].value : [];
-    const xiaomiGoogle = sourceResults[1].status === "fulfilled" ? sourceResults[1].value : [];
-    const catlGdelt = sourceResults[2].status === "fulfilled" ? sourceResults[2].value : [];
-    const xiaomiGdelt = sourceResults[3].status === "fulfilled" ? sourceResults[3].value : [];
+    const all = sourceResults
+      .filter((r): r is PromiseFulfilledResult<any[]> => r.status === "fulfilled")
+      .flatMap((r) => r.value);
 
-    const all = [...catlGoogle, ...xiaomiGoogle, ...catlGdelt, ...xiaomiGdelt];
     const fetchedCount = all.length;
     const windowStartMs = DateTime.fromISO(windowStart, { zone: "utc" }).toMillis();
     const windowEndMs = DateTime.fromISO(windowEnd, { zone: "utc" }).toMillis();
@@ -193,21 +156,10 @@ export async function runDailyCron(): Promise<{
       };
     });
 
-    if (!dryRun && rows.length) {
+    if (rows.length) {
       const { error: upsertErr } = await supabase.from("news_item").upsert(rows, { onConflict: "content_hash" });
       if (upsertErr) throw upsertErr;
     }
-
-    const itemsByTopic = groupByTopic(
-      unique.map((it, idx) => {
-        const tr = translatedTitles.get(idx);
-        return {
-          ...it,
-          title_zh: tr?.title_zh ?? null,
-          summary_zh: tr?.summary_zh ?? null,
-        };
-      }),
-    );
 
     await supabase
       .from("run_log")
@@ -238,7 +190,6 @@ export async function runDailyCron(): Promise<{
         status: "FAILED",
         window_start: windowStart,
         window_end: windowEnd,
-        email_to: toEmail,
         error_message: msg,
       })
       .eq("id", runId);

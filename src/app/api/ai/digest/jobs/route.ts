@@ -1,4 +1,5 @@
 import { createJob, findRecentSuccess } from "../../../../../server/aiDigestJob";
+import { safeTopic } from "../../../../../config/topics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,11 +10,6 @@ type CreateJobBody = {
   days?: string;
   q?: string;
 };
-
-function safeTopic(v: unknown): "CATL" | "XIAOMI" {
-  const s = typeof v === "string" ? v.toUpperCase() : "";
-  return s === "XIAOMI" ? "XIAOMI" : "CATL";
-}
 
 function safeDays(v: unknown): "1" | "7" | "30" | "ALL" {
   const s = typeof v === "string" ? v.toUpperCase() : "";

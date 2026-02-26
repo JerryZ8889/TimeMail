@@ -19,13 +19,13 @@ export type GoogleNewsLocale = {
   ceid: string;
 };
 
-const GOOGLE_NEWS_ZH_CN: GoogleNewsLocale = {
+export const GOOGLE_NEWS_ZH_CN: GoogleNewsLocale = {
   hl: "zh-CN",
   gl: "CN",
   ceid: "CN:zh-Hans",
 };
 
-const GOOGLE_NEWS_EN_US: GoogleNewsLocale = {
+export const GOOGLE_NEWS_EN_US: GoogleNewsLocale = {
   hl: "en-US",
   gl: "US",
   ceid: "US:en",
@@ -66,7 +66,7 @@ export async function fetchGoogleNewsRssWithLocales(
   queries: string[],
   locales: GoogleNewsLocale[],
 ): Promise<FetchedItem[]> {
-  const parser = new Parser({ timeout: 20000 });
+  const parser = new Parser({ timeout: 15000 });
   const urls = locales.flatMap((loc) => queries.map((q) => buildGoogleNewsRssUrl(q, loc)));
   const feeds = await Promise.allSettled(urls.map((u) => parser.parseURL(u)));
 

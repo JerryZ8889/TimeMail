@@ -2,6 +2,7 @@ import { getOptionalEnv } from "../../../../lib/env";
 import { createSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 import type { NewsItemRow } from "../../../../lib/types";
 import { buildAiDigest } from "../../../../server/aiDigest";
+import { safeTopic } from "../../../../config/topics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,8 +24,8 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const topicRaw = (url.searchParams.get("topic") ?? "CATL").toUpperCase();
-  const topic = (topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : "CATL") as "CATL" | "XIAOMI";
+  const topicRaw = url.searchParams.get("topic") ?? "";
+  const topic = safeTopic(topicRaw);
   const daysRaw = (url.searchParams.get("days") ?? "ALL").toUpperCase();
   const days = (daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "ALL") as "1" | "7" | "30" | "ALL";
   const q = sanitizeQuery(url.searchParams.get("q") ?? "");

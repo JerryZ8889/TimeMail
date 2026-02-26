@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from "../lib/supabaseAdmin";
 import type { NewsItemRow } from "../lib/types";
 import type { AiDigest } from "./aiDigest";
 import { buildAiDigest, pickTopNewsIndices } from "./aiDigest";
+import type { TopicKey } from "../config/topics";
 
 export type AiDigestJobStatus = "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
 
@@ -12,7 +13,7 @@ export type AiDigestJobRow = {
   updated_at: string;
   status: AiDigestJobStatus;
   run_token?: string;
-  topic: "CATL" | "XIAOMI";
+  topic: TopicKey;
   days: "1" | "7" | "30" | "ALL";
   q: string;
   candidate_limit: number;
@@ -101,7 +102,7 @@ export async function getJob(jobId: string): Promise<AiDigestJobResponse | null>
   };
 }
 
-export async function findRecentSuccess(params: { topic: "CATL" | "XIAOMI"; days: "1" | "7" | "30" | "ALL"; q: string }) {
+export async function findRecentSuccess(params: { topic: TopicKey; days: "1" | "7" | "30" | "ALL"; q: string }) {
   const supabase = createSupabaseAdmin();
   const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
   const { data } = await supabase
@@ -131,7 +132,7 @@ export async function findRecentSuccess(params: { topic: "CATL" | "XIAOMI"; days
   } satisfies AiDigestJobResponse;
 }
 
-export async function createJob(params: { topic: "CATL" | "XIAOMI"; days: "1" | "7" | "30" | "ALL"; q: string }) {
+export async function createJob(params: { topic: TopicKey; days: "1" | "7" | "30" | "ALL"; q: string }) {
   const supabase = createSupabaseAdmin();
   const now = nowIso();
   const q = sanitizeQuery(params.q);
@@ -165,7 +166,7 @@ export async function createJob(params: { topic: "CATL" | "XIAOMI"; days: "1" | 
   return { id: row.id, runToken: row.run_token ?? "" };
 }
 
-async function loadCandidates(params: { topic: "CATL" | "XIAOMI"; days: "1" | "7" | "30" | "ALL"; q: string; limit: number }) {
+async function loadCandidates(params: { topic: TopicKey; days: "1" | "7" | "30" | "ALL"; q: string; limit: number }) {
   const supabase = createSupabaseAdmin();
   const since = computeSince(params.days);
   const q = sanitizeQuery(params.q);

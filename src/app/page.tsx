@@ -3,6 +3,10 @@ import { ExternalLink } from "lucide-react";
 import { getOptionalEnv } from "../lib/env";
 import { createSupabaseAdmin } from "../lib/supabaseAdmin";
 import type { NewsItemRow, RunLogRow } from "../lib/types";
+import { DEFAULT_TOPIC, TOPIC_KEYS, topicDisplayName, allTopicDisplayNames } from "../config/topics";
+import { sourcesByTopic, SOURCE_COUNT } from "../config/sources";
+
+export const dynamic = "force-dynamic";
 
 type PageData = {
   envReady: boolean;
@@ -16,6 +20,23 @@ function fmt(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString("zh-CN", { hour12: false });
+}
+
+function relativeTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return "刚刚";
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remainHours = hours % 24;
+    return `${days} 天 ${remainHours} 小时前`;
+  }
+  if (hours > 0) return `${hours} 小时 ${minutes} 分钟前`;
+  return `${minutes} 分钟前`;
 }
 
 function statusBadge(status: string | null | undefined): { label: string; cls: string } {
@@ -78,6 +99,8 @@ async function loadPageData(): Promise<PageData> {
 export default async function Home() {
   const data = await loadPageData();
   const badge = statusBadge(data.latestRun?.status);
+  const lastSyncTime = data.latestRun?.status === "SUCCESS" ? data.latestRun.ended_at : data.jobLastSuccessAt;
+  const sinceSync = relativeTime(lastSyncTime);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -89,13 +112,13 @@ export default async function Home() {
             </div>
             <div>
               <div className="text-sm font-semibold leading-5">资讯日报机器人</div>
-              <div className="text-xs text-zinc-500">宁德时代 / 小米</div>
+              <div className="text-xs text-zinc-500">{allTopicDisplayNames()}</div>
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-600">
             <div className="hidden sm:block">手动触发同步</div>
             <Link
-              href="/news?topic=CATL"
+              href={`/news?topic=${DEFAULT_TOPIC}`}
               className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
             >
               资讯列表
@@ -117,6 +140,9 @@ export default async function Home() {
               <div>
                 <div className="text-sm font-semibold">运行状态</div>
                 <div className="mt-1 text-xs text-zinc-500">最近一次任务与结果概览</div>
+                {sinceSync ? (
+                  <div className="mt-1 text-xs text-zinc-400">距离上次成功同步 {sinceSync}</div>
+                ) : null}
               </div>
               <div className={`rounded-full border px-3 py-1 text-xs font-medium ${badge.cls}`}>{badge.label}</div>
             </div>
@@ -162,6 +188,33 @@ export default async function Home() {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="text-sm font-semibold">数据源（{SOURCE_COUNT} 个）</div>
+          <div className="mt-1 text-xs text-zinc-500">每次同步时逐个抓取以下数据源</div>
+          <div className="mt-3 space-y-3">
+            {sourcesByTopic().map((g) => (
+              <div key={g.topic}>
+                <div className="text-xs font-semibold text-zinc-600 mb-1">{g.displayName}</div>
+                <div className="space-y-0.5">
+                  {g.sources.map((s) => (
+                    <div key={s.index} className="flex items-baseline gap-2 text-xs">
+                      <span className={`w-10 font-medium ${s.type === "gdelt" ? "text-indigo-600" : "text-sky-600"}`}>
+                        {s.type === "rss" ? "RSS" : "GDELT"}
+                      </span>
+                      {s.locale ? (
+                        <span className="w-10 text-zinc-400">{s.locale}</span>
+                      ) : (
+                        <span className="w-10 text-zinc-400">max={s.maxRecords}</span>
+                      )}
+                      <span className="text-zinc-500 break-all">{s.query}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
             <div>
@@ -188,7 +241,7 @@ export default async function Home() {
                   {data.latestItems.map((it) => (
                     <tr key={it.id} className="border-t border-zinc-200 hover:bg-zinc-50">
                       <td className="px-4 py-3 text-xs text-zinc-600">
-                        {it.topic === "CATL" ? "宁德时代" : "小米"}
+                        {topicDisplayName(it.topic)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="line-clamp-2 font-medium text-zinc-900">{it.title_zh ?? it.title}</div>

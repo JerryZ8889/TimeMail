@@ -1,4 +1,6 @@
-export type Topic = "CATL" | "XIAOMI";
+import type { TopicKey } from "../config/topics";
+
+export type Topic = TopicKey;
 
 export type JobStateRow = {
   key: string;
