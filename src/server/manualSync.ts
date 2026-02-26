@@ -137,8 +137,6 @@ export async function runManualSync(params: { lookbackHours?: number } = {}): Pr
       if (upsertErr) throw upsertErr;
     }
 
-    groupByTopic(unique);
-
     return { status: "SUCCESS", windowStart, windowEnd, fetchedCount, dedupedCount, outputCount, errorMessage: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "同步失败";

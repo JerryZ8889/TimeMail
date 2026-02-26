@@ -16,7 +16,6 @@ export type RunLogRow = {
   fetched_count: number;
   deduped_count: number;
   output_count: number;
-  email_to: string;
   error_message: string | null;
 };
 

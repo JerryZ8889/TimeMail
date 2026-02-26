@@ -5,7 +5,6 @@ import type { NewNewsItem, Topic } from "../lib/types";
 import { computeWindowEndShanghai, toIso } from "../lib/time";
 import { fetchGoogleNewsRss } from "./googleNewsRss";
 import { fetchGdeltDocs } from "./gdelt";
-import { buildEmailHtml, sendReportEmail } from "./email";
 import { translateItemsToZh } from "./translate";
 
 function parseIsoOrNull(v: string | null | undefined): DateTime | null {
@@ -52,7 +51,6 @@ export async function runDailyCron(): Promise<{
   errorMessage?: string | null;
 }> {
   const supabase = createSupabaseAdmin();
-  const toEmail = getOptionalEnv("REPORT_TO_EMAIL") ?? "1619900613@qq.com";
   const now = DateTime.now();
   const windowEndDt = computeWindowEndShanghai(now);
   const windowEnd = toIso(windowEndDt);
@@ -97,7 +95,6 @@ export async function runDailyCron(): Promise<{
       status: "RUNNING",
       window_start: windowStart,
       window_end: windowEnd,
-      email_to: toEmail,
       fetched_count: 0,
       deduped_count: 0,
       output_count: 0,
@@ -107,10 +104,6 @@ export async function runDailyCron(): Promise<{
 
   if (runInsertErr) throw runInsertErr;
   const runId = runRow.id;
-
-  const dryRun = getOptionalEnv("DRY_RUN") === "1";
-  const skipEmail =
-    getOptionalEnv("SKIP_EMAIL") === "1" || !getOptionalEnv("RESEND_API_KEY") || !getOptionalEnv("RESEND_FROM");
 
   try {
     const sourceResults = await Promise.allSettled([
@@ -215,25 +208,6 @@ export async function runDailyCron(): Promise<{
         };
       }),
     );
-    const subjectDate = windowEndDt.setZone("Asia/Shanghai").toFormat("yyyy-LL-dd");
-    const subject = `资讯日报（宁德时代/小米）${subjectDate} 08:00`;
-    const html = buildEmailHtml({
-      windowStartIso: windowStart,
-      windowEndIso: windowEnd,
-      itemsByTopic,
-      fetchedCount: filtered.length,
-      dedupedCount,
-      outputCount,
-    });
-
-    let emailError: string | null = null;
-    if (!dryRun && !skipEmail) {
-      try {
-        await sendReportEmail({ subject, html });
-      } catch (e) {
-        emailError = e instanceof Error ? e.message : "Email send failed";
-      }
-    }
 
     await supabase
       .from("run_log")
@@ -245,17 +219,14 @@ export async function runDailyCron(): Promise<{
         fetched_count: filtered.length,
         deduped_count: dedupedCount,
         output_count: outputCount,
-        email_to: toEmail,
-        error_message: emailError,
+        error_message: null,
       })
       .eq("id", runId);
 
-    if (!dryRun) {
-      await supabase
-        .from("job_state")
-        .update({ last_success_at: windowEnd, updated_at: now.toUTC().toISO() })
-        .eq("key", "daily_news");
-    }
+    await supabase
+      .from("job_state")
+      .update({ last_success_at: windowEnd, updated_at: now.toUTC().toISO() })
+      .eq("key", "daily_news");
 
     return { status: "SUCCESS", windowStart, windowEnd, fetchedCount, dedupedCount, outputCount, errorMessage: null };
   } catch (e) {

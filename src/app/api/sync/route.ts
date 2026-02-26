@@ -23,7 +23,6 @@ export async function POST(req: Request) {
   }
 
   const supabase = createSupabaseAdmin();
-  const toEmail = getOptionalEnv("REPORT_TO_EMAIL") ?? "manual";
 
   const { data: runRow } = await supabase
     .from("run_log")
@@ -31,7 +30,6 @@ export async function POST(req: Request) {
       status: "RUNNING",
       window_start: null,
       window_end: null,
-      email_to: toEmail,
       fetched_count: 0,
       deduped_count: 0,
       output_count: 0,
@@ -55,7 +53,6 @@ export async function POST(req: Request) {
         fetched_count: result.fetchedCount,
         deduped_count: result.dedupedCount,
         output_count: result.outputCount,
-        email_to: toEmail,
         error_message: result.errorMessage ?? null,
       })
       .eq("id", runId);

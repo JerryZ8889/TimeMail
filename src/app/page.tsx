@@ -6,18 +6,10 @@ import type { NewsItemRow, RunLogRow } from "../lib/types";
 
 type PageData = {
   envReady: boolean;
-  toEmail: string;
   jobLastSuccessAt: string | null;
   latestRun: RunLogRow | null;
   latestItems: NewsItemRow[];
 };
-
-function maskEmail(email: string): string {
-  const [name, domain] = email.split("@");
-  if (!name || !domain) return email;
-  if (name.length <= 2) return `${name[0]}*@${domain}`;
-  return `${name.slice(0, 2)}***@${domain}`;
-}
 
 function fmt(iso: string | null | undefined): string {
   if (!iso) return "-";
@@ -34,12 +26,10 @@ function statusBadge(status: string | null | undefined): { label: string; cls: s
 }
 
 async function loadPageData(): Promise<PageData> {
-  const toEmail = getOptionalEnv("REPORT_TO_EMAIL") ?? "1619900613@qq.com";
   const envReady = Boolean(getOptionalEnv("SUPABASE_URL") && getOptionalEnv("SUPABASE_SERVICE_ROLE_KEY"));
   if (!envReady) {
     return {
       envReady: false,
-      toEmail,
       jobLastSuccessAt: null,
       latestRun: null,
       latestItems: [],
@@ -79,7 +69,6 @@ async function loadPageData(): Promise<PageData> {
 
   return {
     envReady: true,
-    toEmail,
     jobLastSuccessAt: jobRow?.last_success_at ?? null,
     latestRun,
     latestItems,
@@ -104,8 +93,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-600">
-            <div className="hidden sm:block">计划：每天 08:00（Asia/Shanghai）</div>
-            <div className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">邮箱：{maskEmail(data.toEmail)}</div>
+            <div className="hidden sm:block">手动触发同步</div>
             <Link
               href="/news?topic=CATL"
               className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
@@ -169,10 +157,6 @@ export default async function Home() {
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                 <div className="text-xs text-zinc-500">去重命中 / 新增条目</div>
                 <div className="mt-1 text-sm font-semibold">{data.latestRun?.deduped_count ?? 0} / {data.latestRun?.output_count ?? 0}</div>
-              </div>
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:col-span-2">
-                <div className="text-xs text-zinc-500">邮件发送</div>
-                <div className="mt-1 text-sm font-semibold">发送至 {maskEmail(data.latestRun?.email_to ?? data.toEmail)}</div>
               </div>
             </div>
           </div>

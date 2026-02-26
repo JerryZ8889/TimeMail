@@ -20,7 +20,6 @@ create table if not exists public.run_log (
   fetched_count int not null default 0,
   deduped_count int not null default 0,
   output_count int not null default 0,
-  email_to text not null,
   error_message text null
 );
 
