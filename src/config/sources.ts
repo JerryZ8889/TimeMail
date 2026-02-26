@@ -42,7 +42,7 @@ function buildSourceList(): SourceDef[] {
       topic,
       label: `${name} GDELT`,
       query: cfg.gdeltQuery,
-      maxRecords: 200,
+      maxRecords: 100,
     });
   }
 
