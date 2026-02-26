@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>今日铜价走势（预览）</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1020;
+        --card: #121a33;
+        --text: #e8ecff;
+        --muted: rgba(232, 236, 255, 0.75);
+        --border: rgba(232, 236, 255, 0.14);
+        --link: #9bb7ff;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f7f8fc;
+          --card: #ffffff;
+          --text: #0f172a;
+          --muted: rgba(15, 23, 42, 0.68);
+          --border: rgba(15, 23, 42, 0.12);
+          --link: #2456ff;
+        }
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 40px;
+      }
+
+      header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .sub {
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      a {
+        color: var(--link);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      @media (min-width: 980px) {
+        .grid {
+          grid-template-columns: 420px 1fr;
+          align-items: start;
+        }
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .card-h {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .card-h b {
+        font-size: 14px;
+      }
+
+      .card-h span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .card-b {
+        padding: 12px 14px;
+      }
+
+      .note {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .tv {
+        padding: 0;
+      }
+
+      .tv > div {
+        width: 100%;
+      }
+
+      .footer {
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>今日铜价走势（预览）</h1>
+          <div class="sub">
+            这里用 TradingView 的 <a href="https://www.tradingview.com/symbols/COMEX-HG1!/" target="_blank" rel="noreferrer">COMEX:HG1!</a>
+            铜期货作为示例展示“今日/日内走势”。
+          </div>
+        </div>
+        <div class="sub" id="ts"></div>
+      </header>
+
+      <div class="grid">
+        <section class="card">
+          <div class="card-h">
+            <b>概览</b>
+            <span>来源：TradingView</span>
+          </div>
+          <div class="card-b note">
+            <div style="margin-bottom: 10px">
+              若你指的是“沪铜主力/现货铜”等其它口径，可以告诉我具体品种与交易所，我再把页面里的 symbol 换掉。
+            </div>
+            <div>
+              参考页面：
+              <a href="https://www.tradingview.com/symbols/COMEX-HG1!/" target="_blank" rel="noreferrer">HG1! Charts and Quotes — TradingView</a>
+            </div>
+          </div>
+          <div class="tv">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script
+                type="text/javascript"
+                src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js"
+                async
+              >
+                {
+                  "symbol": "COMEX:HG1!",
+                  "locale": "zh_CN",
+                  "dateRange": "1D",
+                  "colorTheme": "dark",
+                  "isTransparent": false,
+                  "autosize": true,
+                  "largeChartUrl": "https://www.tradingview.com/symbols/COMEX-HG1!/"
+                }
+              </script>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-h">
+            <b>日内K线</b>
+            <span>5分钟</span>
+          </div>
+          <div class="tv">
+            <div class="tradingview-widget-container" style="height: 620px">
+              <div id="tradingview_advanced" style="height: 620px"></div>
+              <script
+                type="text/javascript"
+                src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
+                async
+              >
+                {
+                  "symbol": "COMEX:HG1!",
+                  "interval": "5",
+                  "timezone": "Asia/Shanghai",
+                  "locale": "zh_CN",
+                  "theme": "dark",
+                  "style": "1",
+                  "enable_publishing": false,
+                  "save_image": false,
+                  "hide_legend": false,
+                  "allow_symbol_change": true,
+                  "container_id": "tradingview_advanced",
+                  "withdateranges": true,
+                  "hide_side_toolbar": false,
+                  "details": true,
+                  "hotlist": false,
+                  "calendar": false
+                }
+              </script>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer">免责声明：本页仅做技术预览与信息展示，不构成任何投资建议。</div>
+    </div>
+
+    <script>
+      const ts = document.getElementById("ts");
+      if (ts) {
+        const now = new Date();
+        ts.textContent = `本页生成时间：${now.toLocaleString("zh-CN", { hour12: false })}`;
+      }
+    </script>
+  </body>
+</html>
