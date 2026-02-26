@@ -11,6 +11,7 @@ export type AiDigestJobRow = {
   created_at: string;
   updated_at: string;
   status: AiDigestJobStatus;
+  run_token?: string;
   topic: "CATL" | "XIAOMI";
   days: "1" | "7" | "30" | "ALL";
   q: string;
@@ -161,7 +162,7 @@ export async function createJob(params: { topic: "CATL" | "XIAOMI"; days: "1" | 
     .single();
   if (error) throw error;
   const row = data as AiDigestJobRow;
-  return row.id;
+  return { id: row.id, runToken: row.run_token ?? "" };
 }
 
 async function loadCandidates(params: { topic: "CATL" | "XIAOMI"; days: "1" | "7" | "30" | "ALL"; q: string; limit: number }) {
@@ -318,4 +319,3 @@ export async function processNextJob(): Promise<string | null> {
   await processJob(id);
   return id;
 }
-

@@ -15,6 +15,7 @@ type JobStatus = "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
 type Job = {
   id: string;
   status: JobStatus;
+  runToken?: string;
   createdAt?: string;
   updatedAt?: string;
   startedAt?: string | null;
@@ -92,6 +93,13 @@ export function AiDigestPanel(props: {
         setDigest(j.digest);
         setLoading(false);
         return;
+      }
+      if (j.runToken) {
+        await fetch(`/api/ai/digest/jobs/${encodeURIComponent(j.id)}/run`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ runToken: j.runToken }),
+        }).catch(() => null);
       }
       await pollJob(j.id);
       clearPoll();

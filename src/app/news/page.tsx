@@ -4,6 +4,7 @@ import { getOptionalEnv } from "../../lib/env";
 import { createSupabaseAdmin } from "../../lib/supabaseAdmin";
 import type { NewsItemRow } from "../../lib/types";
 import { AiDigestPanel } from "./AiDigestPanel";
+import { SyncPanel } from "./SyncPanel";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -244,6 +245,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
             </div>
           </form>
         </div>
+        <SyncPanel />
         <AiDigestPanel key={`${f.topic}|${f.days}|${f.q}`} topic={f.topic} days={f.days} q={f.q} />
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white">
