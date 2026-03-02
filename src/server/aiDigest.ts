@@ -2,6 +2,7 @@ import { getOptionalEnv } from "../lib/env";
 import type { NewsItemRow } from "../lib/types";
 import type { TopicKey } from "../config/topics";
 import { isValidTopic, TOPIC_KEYS, allTopicDisplayNames } from "../config/topics";
+import { translateItemsToZh } from "./translate";
 
 type OpenAIChatResponse = {
   choices?: Array<{
@@ -28,6 +29,16 @@ export type AiDigest = {
 };
 
 type Provider = "zhipu" | "openai";
+
+function hasEnglish(text: string): boolean {
+  return /[A-Za-z]/.test(text);
+}
+
+function pickZh(original: string, translated: string | null): string {
+  const t = (translated ?? "").trim();
+  if (!t) return original;
+  return t;
+}
 
 function extractJsonObject(text: string): unknown {
   const start = text.indexOf("{");
@@ -96,6 +107,67 @@ function normalizeDigest(v: unknown): AiDigest | null {
 
   if (!overall) return null;
   return { overall, majorChanges, bullish, bearish, watch };
+}
+
+async function translateDigestToZh(digest: AiDigest): Promise<AiDigest> {
+  const needOverall = hasEnglish(digest.overall);
+  const listNames = ["majorChanges", "bullish", "bearish", "watch"] as const;
+  const refs: Array<{ list: (typeof listNames)[number]; idx: number; field: "title" | "reason" }> = [];
+  const textItems: Array<{ title: string; summary: string | null }> = [];
+
+  for (const list of listNames) {
+    digest[list].forEach((it, idx) => {
+      if (hasEnglish(it.title)) {
+        refs.push({ list, idx, field: "title" });
+        textItems.push({ title: it.title, summary: null });
+      }
+      if (hasEnglish(it.reason)) {
+        refs.push({ list, idx, field: "reason" });
+        textItems.push({ title: it.reason, summary: null });
+      }
+    });
+  }
+
+  if (!needOverall && textItems.length === 0) return digest;
+
+  try {
+    const payload: Array<{ title: string; summary: string | null }> = [];
+    if (needOverall) {
+      payload.push({ title: digest.overall, summary: null });
+    }
+    payload.push(...textItems);
+    const translated = await translateItemsToZh(payload);
+
+    let ptr = 0;
+    let overall = digest.overall;
+    if (needOverall) {
+      overall = pickZh(digest.overall, translated[ptr]?.titleZh ?? null);
+      ptr += 1;
+    }
+
+    const next: AiDigest = {
+      overall,
+      majorChanges: digest.majorChanges.map((it) => ({ ...it })),
+      bullish: digest.bullish.map((it) => ({ ...it })),
+      bearish: digest.bearish.map((it) => ({ ...it })),
+      watch: digest.watch.map((it) => ({ ...it })),
+    };
+
+    refs.forEach((ref, i) => {
+      const row = next[ref.list][ref.idx];
+      if (!row) return;
+      const tr = translated[ptr + i]?.titleZh ?? null;
+      if (ref.field === "title") {
+        row.title = pickZh(row.title, tr);
+      } else {
+        row.reason = pickZh(row.reason, tr);
+      }
+    });
+
+    return next;
+  } catch {
+    return digest;
+  }
 }
 
 export type AiDigestCandidate = Pick<
@@ -328,7 +400,8 @@ export async function buildAiDigest(params: {
   if (cached && now - cached.at < 10 * 60 * 1000) return cached.value;
 
   const payload = { items: buildInput(slice) };
-  const digest = provider === "zhipu" ? await callZhipuDigest(payload) : await callOpenAiDigest(payload);
+  const digestRaw = provider === "zhipu" ? await callZhipuDigest(payload) : await callOpenAiDigest(payload);
+  const digest = await translateDigestToZh(digestRaw);
   cache.set(key, { at: now, value: digest });
   return digest;
 }

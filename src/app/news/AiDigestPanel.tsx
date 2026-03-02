@@ -27,6 +27,20 @@ type Job = {
   digest?: AiDigest | null;
 };
 
+type CachedDigest = {
+  digest: AiDigest;
+  generatedAt: string;
+};
+
+const AI_DIGEST_CACHE_KEY = "ai_digest:v2:global";
+
+function fmtGeneratedAt(iso: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("zh-CN", { hour12: false });
+}
+
 export function AiDigestPanel(props: {
   topic: TopicKey;
   days: "1" | "7" | "30" | "ALL";
@@ -34,6 +48,7 @@ export function AiDigestPanel(props: {
 }) {
   const [loading, setLoading] = useState(false);
   const [digest, setDigest] = useState<AiDigest | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
 
@@ -50,6 +65,31 @@ export function AiDigestPanel(props: {
     return () => clearPoll();
   }, []);
 
+  function saveCachedDigest(nextDigest: AiDigest, at: string) {
+    setDigest(nextDigest);
+    setGeneratedAt(at);
+    try {
+      const payload: CachedDigest = { digest: nextDigest, generatedAt: at };
+      window.localStorage.setItem(AI_DIGEST_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+      // best-effort cache
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(AI_DIGEST_CACHE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<CachedDigest>;
+      if (!parsed || typeof parsed.generatedAt !== "string" || !parsed.digest) return;
+      setDigest(parsed.digest);
+      setGeneratedAt(parsed.generatedAt);
+      setError(null);
+    } catch {
+      return;
+    }
+  }, []);
+
   async function pollJob(id: string) {
     try {
       const res = await fetch(`/api/ai/digest/jobs/${encodeURIComponent(id)}`, { method: "GET" });
@@ -57,12 +97,12 @@ export function AiDigestPanel(props: {
       if (!res.ok || !json?.ok || !json?.job) return;
       setJob(json.job);
       if (json.job.status === "SUCCESS" && json.job.digest) {
-        setDigest(json.job.digest);
+        const at = json.job.endedAt ?? json.job.updatedAt ?? new Date().toISOString();
+        saveCachedDigest(json.job.digest, at);
         setError(null);
         setLoading(false);
         clearPoll();
       } else if (json.job.status === "FAILED") {
-        setDigest(null);
         setError(json.job.errorMessage || "AI 解读失败");
         setLoading(false);
         clearPoll();
@@ -76,7 +116,6 @@ export function AiDigestPanel(props: {
     if (loading) return;
     setLoading(true);
     setError(null);
-    setDigest(null);
     setJob(null);
     try {
       const res = await fetch(`/api/ai/digest/jobs`, {
@@ -91,7 +130,9 @@ export function AiDigestPanel(props: {
       }
       setJob(j);
       if (j.status === "SUCCESS" && j.digest) {
-        setDigest(j.digest);
+        const at = j.endedAt ?? j.updatedAt ?? new Date().toISOString();
+        saveCachedDigest(j.digest, at);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -106,7 +147,6 @@ export function AiDigestPanel(props: {
       clearPoll();
       pollTimer.current = window.setInterval(() => void pollJob(j.id), 2000);
     } catch (e) {
-      setDigest(null);
       setJob(null);
       setError(e instanceof Error ? e.message : "AI 解读失败");
     } finally {
@@ -116,10 +156,16 @@ export function AiDigestPanel(props: {
 
   function reset() {
     setDigest(null);
+    setGeneratedAt(null);
     setError(null);
     setJob(null);
     setLoading(false);
     clearPoll();
+    try {
+      window.localStorage.removeItem(AI_DIGEST_CACHE_KEY);
+    } catch {
+      // ignore
+    }
   }
 
   const statusText = useMemo(() => {
@@ -170,6 +216,7 @@ export function AiDigestPanel(props: {
 
       {error ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
       {statusText ? <div className="mt-3 text-xs text-zinc-500">{statusText}</div> : null}
+      {digest && generatedAt ? <div className="mt-2 text-xs text-zinc-500">生成时间：{fmtGeneratedAt(generatedAt)}</div> : null}
 
       {!digest ? (
         <div className="mt-4 text-sm text-zinc-600">暂未生成。</div>

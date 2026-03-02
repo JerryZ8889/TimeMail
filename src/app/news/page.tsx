@@ -121,6 +121,13 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
     data.items.length === f.pageSize
       ? buildHref("/news", { topic: f.topic, q: f.q, days: f.days, pageSize: f.pageSize, page: f.page + 1 })
       : null;
+  const statusHref = buildHref("/status", {
+    topic: f.topic,
+    q: f.q,
+    days: f.days,
+    pageSize: f.pageSize,
+    page: f.page,
+  });
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -137,7 +144,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-600">
             <Link
-              href="/status"
+              href={statusHref}
               className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100"
             >
               状态页

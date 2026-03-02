@@ -9,12 +9,35 @@ import { sourcesByTopic, SOURCE_COUNT } from "../../config/sources";
 
 export const dynamic = "force-dynamic";
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
 type PageData = {
   envReady: boolean;
   jobLastSuccessAt: string | null;
   latestRun: RunLogRow | null;
   latestItems: NewsItemRow[];
 };
+
+function pickFirst(v: string | string[] | undefined): string {
+  if (Array.isArray(v)) return v[0] ?? "";
+  return v ?? "";
+}
+
+function sanitizeQuery(q: string): string {
+  return q.replaceAll("%", " ").replaceAll("_", " ").trim().slice(0, 80);
+}
+
+function buildHref(base: string, params: Record<string, string | number | undefined>): string {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined) return;
+    const s = String(v);
+    if (!s) return;
+    sp.set(k, s);
+  });
+  const qs = sp.toString();
+  return qs ? `${base}?${qs}` : base;
+}
 
 function fmt(iso: string | null | undefined): string {
   if (!iso) return "-";
@@ -97,7 +120,19 @@ async function loadPageData(): Promise<PageData> {
   };
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
+  const topicRaw = pickFirst(params.topic).toUpperCase();
+  const topic = topicRaw === "CATL" || topicRaw === "XIAOMI" ? topicRaw : DEFAULT_TOPIC;
+  const daysRaw = pickFirst(params.days).toUpperCase();
+  const days = daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "ALL";
+  const q = sanitizeQuery(pickFirst(params.q));
+  const pageSizeRaw = pickFirst(params.pageSize);
+  const pageRaw = pickFirst(params.page);
+  const pageSize = pageSizeRaw && Number.isFinite(Number.parseInt(pageSizeRaw, 10)) ? pageSizeRaw : "50";
+  const page = pageRaw && Number.isFinite(Number.parseInt(pageRaw, 10)) ? pageRaw : "1";
+  const newsHref = buildHref("/news", { topic, days, q, pageSize, page });
+
   const data = await loadPageData();
   const badge = statusBadge(data.latestRun?.status);
   const lastSyncTime = data.latestRun?.status === "SUCCESS" ? data.latestRun.ended_at : data.jobLastSuccessAt;
@@ -119,7 +154,7 @@ export default async function Home() {
           <div className="flex items-center gap-3 text-xs text-zinc-600">
             <div className="hidden sm:block">手动触发同步</div>
             <Link
-              href={`/news?topic=${DEFAULT_TOPIC}`}
+              href={newsHref}
               className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-50"
             >
               资讯列表
