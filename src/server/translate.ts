@@ -94,7 +94,7 @@ async function callZhipuTranslate(payload: {
   const apiKey = getOptionalEnv("ZHIPU_API_KEY") ?? getOptionalEnv("GLM");
   if (!apiKey) return payload.items.map(() => ({ titleZh: null, summaryZh: null }));
 
-  const model = getOptionalEnv("ZHIPU_MODEL") ?? getOptionalEnv("GLM_MODEL") ?? "glm-4.7-flash";
+  const model = getOptionalEnv("ZHIPU_MODEL") ?? getOptionalEnv("GLM_MODEL") ?? "glm-4.6v";
   const body = {
     model,
     temperature: 0.2,

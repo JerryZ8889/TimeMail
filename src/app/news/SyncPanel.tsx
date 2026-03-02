@@ -13,7 +13,7 @@ type SourceState = {
   error?: string;
 };
 
-export function SyncPanel() {
+export function SyncPanel({ className = "mt-4" }: { className?: string } = {}) {
   const [loading, setLoading] = useState(false);
   const [secret, setSecret] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -195,7 +195,7 @@ export function SyncPanel() {
   }));
 
   return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4">
+    <div className={`${className} rounded-2xl border border-zinc-200 bg-white p-4`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-semibold">同步</div>

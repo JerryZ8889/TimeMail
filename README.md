@@ -24,7 +24,7 @@
 可选：外文标题/摘要翻译（简体中文）
 - `TRANSLATE_TO_ZH=1`
 - `TRANSLATION_PROVIDER`（可选：`zhipu`/`openai`，不填默认优先智谱）
-- 智谱：`ZHIPU_API_KEY`（或使用系统环境变量 `GLM`）、`ZHIPU_MODEL`（或 `GLM_MODEL`，默认 `glm-4.7-flash`）
+- 智谱：`ZHIPU_API_KEY`（或使用系统环境变量 `GLM`）、`ZHIPU_MODEL`（或 `GLM_MODEL`，默认 `glm-4.6v`）
 - OpenAI：`OPENAI_API_KEY`、`OPENAI_TRANSLATE_MODEL`（默认 `gpt-4o-mini`）
 
 可选：资讯列表页 AI 解读（利多/利空/重要变化）

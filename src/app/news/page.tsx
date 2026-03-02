@@ -4,7 +4,6 @@ import { getOptionalEnv } from "../../lib/env";
 import { createSupabaseAdmin } from "../../lib/supabaseAdmin";
 import type { NewsItemRow } from "../../lib/types";
 import { AiDigestPanel } from "./AiDigestPanel";
-import { SyncPanel } from "./SyncPanel";
 import { TOPIC_KEYS, DEFAULT_TOPIC, topicDisplayName, isValidTopic, allTopicDisplayNames } from "../../config/topics";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -138,7 +137,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-600">
             <Link
-              href="/"
+              href="/status"
               className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100"
             >
               状态页
@@ -153,8 +152,6 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
             环境变量未配置完成：请在本地 `.env.local` 或 Vercel 项目环境变量中设置 `SUPABASE_URL` 与 `SUPABASE_SERVICE_ROLE_KEY`。
           </div>
         ) : null}
-
-        <SyncPanel />
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

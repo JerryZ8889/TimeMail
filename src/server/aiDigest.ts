@@ -179,7 +179,7 @@ async function callZhipuPick(payload: { items: PickInputItem[] }): Promise<numbe
     getOptionalEnv("ZHIPU_DIGEST_MODEL") ??
     getOptionalEnv("ZHIPU_MODEL") ??
     getOptionalEnv("GLM_MODEL") ??
-    "glm-4.7-flash";
+    "glm-4.6v";
   const body = {
     model,
     temperature: 0.2,
@@ -272,7 +272,7 @@ async function callZhipuDigest(payload: { items: ReturnType<typeof buildInput> }
   const apiKey = getOptionalEnv("ZHIPU_API_KEY") ?? getOptionalEnv("GLM");
   if (!apiKey) throw new Error("Zhipu API key missing");
 
-  const model = getOptionalEnv("ZHIPU_DIGEST_MODEL") ?? getOptionalEnv("ZHIPU_MODEL") ?? getOptionalEnv("GLM_MODEL") ?? "glm-4.7-flash";
+  const model = getOptionalEnv("ZHIPU_DIGEST_MODEL") ?? getOptionalEnv("ZHIPU_MODEL") ?? getOptionalEnv("GLM_MODEL") ?? "glm-4.6v";
   const body = {
     model,
     temperature: 0.2,
